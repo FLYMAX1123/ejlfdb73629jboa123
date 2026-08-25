@@ -1,7 +1,12 @@
-name: CGV 광교 알리미 테스트
+name: CGV 광교 예매 알리미
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -10,6 +15,8 @@ jobs:
     steps:
       - name: 저장소 가져오기
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Python 설치
         uses: actions/setup-python@v5
