@@ -36,11 +36,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add last_dates.json
+          if [ -f last_dates.json ]; then
+            git add last_dates.json
 
-          if git diff --cached --quiet; then
-            echo "변경된 날짜 기록이 없습니다."
+            if git diff --cached --quiet; then
+              echo "변경된 날짜 기록이 없습니다."
+            else
+              git commit -m "Update CGV open dates"
+              git push
+            fi
           else
-            git commit -m "Update CGV open dates"
-            git push
+            echo "last_dates.json 파일이 없습니다. 이번 실행에서는 저장을 건너뜁니다."
           fi
