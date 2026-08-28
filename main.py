@@ -68,15 +68,19 @@ def get_open_dates():
 
             data = response.json()
 
-            if data.get("statusCode") == 0:
-                schedules = data.get("data") or []
+if data.get("statusCode") == 0:
+    schedules = data.get("data") or []
 
-                if len(schedules) > 0:
-                    open_dates.append(date_text)
+    if schedules:
+        print("첫 번째 상영 정보:")
+        print(json.dumps(schedules[0], ensure_ascii=False, indent=2))
 
-                    print(
-                        f"🎬 예매 열린 날짜 발견: {date_text}"
-                    )
+    if len(schedules) > 0:
+        open_dates.append(date_text)
+
+        print(
+            f"🎬 예매 열린 날짜 발견: {date_text}"
+        )
 
         except Exception as error:
             print(
