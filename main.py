@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from curl_cffi import requests
 
@@ -12,15 +13,18 @@ WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 STATE_FILE = "last_dates.json"
 
-
 BOOKING_PAGE = "https://cgv.co.kr/cnm/movieBook"
 
 API_URL = (
     "https://cgv.co.kr/api/v1/booking/searchMovScnInfo"
 )
 
+# 한국 시간
+KST = ZoneInfo("Asia/Seoul")
+
 
 def get_open_dates():
+
     print("CGV 접속 중...")
 
     session = requests.Session(
@@ -38,6 +42,7 @@ def get_open_dates():
     )
 
     if response.status_code != 200:
+
         raise Exception(
             f"CGV 예매 페이지 접속 실패: "
             f"{response.status_code}"
@@ -45,7 +50,8 @@ def get_open_dates():
 
     open_dates = []
 
-    today = datetime.now()
+    # 한국 시간 기준 오늘
+    today = datetime.now(KST).date()
 
     # 오늘부터 14일 동안 확인
     for i in range(14):
@@ -59,6 +65,7 @@ def get_open_dates():
         )
 
         try:
+
             response = session.get(
                 API_URL,
                 params={
@@ -93,30 +100,6 @@ def get_open_dates():
             if data.get("statusCode") == 0:
 
                 schedules = data.get("data") or []
-
-                # ==========================
-                # IMAX 정보 확인용
-                # 첫 번째 상영 데이터 출력
-                # ==========================
-                if schedules:
-                    print()
-                    print(
-                        f"===== {date_text} "
-                        f"첫 번째 상영 정보 ====="
-                    )
-
-                    print(
-                        json.dumps(
-                            schedules[0],
-                            ensure_ascii=False,
-                            indent=2
-                        )
-                    )
-
-                    print(
-                        "=========================="
-                    )
-                    print()
 
                 # 상영 정보가 하나라도 있으면
                 # 해당 날짜를 열린 날짜로 저장
@@ -158,9 +141,7 @@ def load_previous_dates():
             encoding="utf-8"
         ) as file:
 
-            data = json.load(
-                file
-            )
+            data = json.load(file)
 
         return data.get(
             "dates",
@@ -247,19 +228,29 @@ def send_discord(new_dates):
         response.status_code
     )
 
+    if response.status_code not in [200, 204]:
+
+        raise Exception(
+            f"Discord 전송 실패: "
+            f"{response.status_code}"
+        )
+
 
 def main():
 
-    print(
-        "=" * 40
-    )
+    print("=" * 40)
 
     print(
         "CGV 광교 예매 날짜 확인 시작"
     )
 
-    print(
-        "=" * 40
+    print("=" * 40)
+
+    # 한국 시간 기준 오늘
+    today = datetime.now(KST).date()
+
+    today_text = today.strftime(
+        "%Y%m%d"
     )
 
     current_dates = get_open_dates()
@@ -289,7 +280,7 @@ def main():
         load_previous_dates()
     )
 
-    # 첫 실행인 경우
+    # 첫 실행
     if previous_dates is None:
 
         print()
@@ -314,9 +305,19 @@ def main():
         return
 
     # 새로 추가된 날짜 찾기
+    #
+    # ⭐ 핵심:
+    # 오늘보다 이전 날짜는
+    # 절대로 신규 알림을 보내지 않음
     new_dates = sorted(
-        set(current_dates)
-        - set(previous_dates)
+        {
+            date
+            for date in current_dates
+            if (
+                date not in previous_dates
+                and date >= today_text
+            )
+        }
     )
 
     if new_dates:
